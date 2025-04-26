@@ -1,0 +1,36 @@
+services:
+  chat-server:
+    image: chat-server
+    restart: unless-stopped
+    entrypoint: /bin/server -port 3000 -pg-host chat-postgres -pg-user ${POSTGRES_USER} -pg-pass ${POSTGRES_PASSWORD} -pg-db ${POSTGRES_DB}
+    ports:
+      - 3000:3000
+    depends_on:
+      - chat-postgres
+
+  reverse-proxy:
+    image: 'jc21/nginx-proxy-manager:latest'
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '81:81'
+      - '443:443'
+    volumes:
+      - ./volumes/reverse-proxy/data:/data
+      - ./volumes/certs:/etc/letsencrypt
+
+  chat-postgres:
+    image: postgres:14-alpine
+    restart: unless-stopped
+    ports:
+      - 5432:5432
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    env_file:
+      - path: ./volumes/env/production.env
+        required: true
+
+
+networks:
+  default:
+    name: chat-network

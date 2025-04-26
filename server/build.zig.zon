@@ -1,0 +1,29 @@
+.{
+    .name = .server,
+    .version = "0.6.0",
+    .fingerprint = 0x5a6dd5f682a8198a, // Changing this has security and trust implications.
+
+    .minimum_zig_version = "0.14.0",
+    .dependencies = .{
+        .httpz = .{
+            .url = "git+https://github.com/karlseguin/http.zig?ref=master#163fd691f46e222d3aa9d15831f7128ce55a58bc",
+            .hash = "httpz-0.0.0-PNVzrA63BgDRcEWrLJ0p9VGOK5ib-neHf2RN0SoueEMR",
+        },
+        .pg = .{
+            .url = "git+https://github.com/karlseguin/pg.zig?ref=master#901c289368f0eae8e37ca90e3f806be9e3ff86f9",
+            .hash = "pg-0.0.0-Wp_7gRD-BQCbDvJEahLsdoxUdlR7BsmvPnQyYdGyQzEE",
+        },
+        .@"zig-jwt" = .{
+            .url = "git+https://github.com/deatil/zig-jwt?ref=main#dc9d372d8e96246d8c15ec9667ab251d446b8713",
+            .hash = "zig_jwt-1.0.27-w3q9SI3uAwDxfWs3n78v2MYysS36EPj23qjwNoJP6OL8",
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        // For example...
+        //"LICENSE",
+        //"README.md",
+    },
+}
