@@ -1,22 +1,6 @@
-import 'dart:async';
-
 import 'package:app/models/session.dart';
-import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqlite_api.dart';
 import 'package:stated/stated.dart';
-
-FutureOr<void> onDatabaseCreate(Database db, int version) async {
-  await db.execute(
-    'CREATE TABLE session (alias TEXT PRIMARY KEY, token TEXT NOT NULL)',
-  );
-}
-
-class Storage {
-  Storage(this.db);
-
-  final Database db;
-
-  late final SessionTable session = SessionTable(db);
-}
 
 class SessionTable {
   SessionTable(this.db);

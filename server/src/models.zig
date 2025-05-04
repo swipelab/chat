@@ -12,6 +12,11 @@ pub const Message = struct {
     //
     //     return result;
     // }
+
+    pub fn stringify(self: @This()) ?[]const u8 {
+        if (self.text) |text| return text;
+        return null;
+    }
 };
 
 pub const TextMessage = []const u8;

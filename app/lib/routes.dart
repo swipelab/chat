@@ -1,4 +1,4 @@
-import 'package:app/core/router.dart';
+import 'package:app/blocs/router.dart';
 import 'package:app/pages/account/account_page.dart';
 import 'package:app/pages/home/home_page.dart';
 import 'package:app/pages/room/room_page.dart';

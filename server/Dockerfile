@@ -16,5 +16,5 @@ WORKDIR /build
 COPY . /build
 RUN /compiler/zig build $OPTIONS
 
-FROM scratch AS output
+FROM gcr.io/distroless/static AS output
 COPY --from=compiler /build/zig-out/bin /bin

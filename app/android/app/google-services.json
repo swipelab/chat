@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "779643400412",
+    "project_id": "chat-swipelab",
+    "storage_bucket": "chat-swipelab.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:779643400412:android:614bde9ed9f7c1eb820419",
+        "android_client_info": {
+          "package_name": "com.swipelab.chat.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRBWG3s9Loe3RVVclQKDVP5AV8fbcHyLM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

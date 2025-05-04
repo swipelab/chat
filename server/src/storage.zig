@@ -6,6 +6,7 @@ const Allocator = std.mem.Allocator;
 allocator: Allocator,
 db: *pg.Pool,
 auth: AuthTable,
+fcm: FcmTable,
 message: MessageTable,
 room: RoomTable,
 
@@ -49,6 +50,7 @@ pub fn init(allocator: Allocator, db: *pg.Pool) Self {
         .allocator = allocator,
         .db = db,
         .auth = .{ .db = db },
+        .fcm = .{ .db = db },
         .message = .{ .db = db },
         .room = .{ .db = db },
     };
@@ -138,5 +140,54 @@ const AuthTable = struct {
         defer row.deinit() catch {};
 
         return try row.to(Auth, .{ .allocator = allocator });
+    }
+};
+
+const FcmTable = struct {
+    db: *pg.Pool,
+
+    const FcmEntity = struct {
+        auth_id: i32,
+        token: []const u8,
+    };
+
+    pub fn delete(self: *FcmTable, entry: struct {
+        auth_id: i32,
+    }) !void {
+        _ = try self.db.exec("DELETE FROM public.fcm WHERE auth_id = $1", .{
+            entry.auth_id,
+        });
+    }
+
+    /// Upserts the [fcm.token] for [auth_id]
+    pub fn upsert(self: *FcmTable, entry: struct {
+        auth_id: i32,
+        token: []const u8,
+    }) !void {
+        _ = try self.db.exec(
+            \\INSERT INTO public.fcm (auth_id, token) VALUES ($1, $2)
+            \\ON CONFLICT (auth_id)
+            \\  DO UPDATE SET token = $2
+        , .{
+            entry.auth_id,
+            entry.token,
+        });
+    }
+
+    pub fn selectOthers(self: *FcmTable, opts: struct {
+        allocator: std.mem.Allocator,
+        auth_id: i32,
+    }) ![]FcmEntity {
+        var query = try self.db.queryOpts("SELECT auth_id, token FROM public.fcm WHERE auth_id <> $1", .{
+            opts.auth_id,
+        }, .{ .column_names = true });
+        defer query.deinit();
+
+        var result = std.ArrayList(FcmEntity).init(opts.allocator);
+        var mapper = query.mapper(FcmEntity, .{ .allocator = opts.allocator, .dupe = true });
+        while (try mapper.next()) |entry| {
+            try result.append(entry);
+        }
+        return result.items;
     }
 };

@@ -2,9 +2,11 @@ services:
   chat-server:
     image: chat-server
     restart: unless-stopped
-    entrypoint: /bin/server -port 3000 -pg-host chat-postgres -pg-user ${POSTGRES_USER} -pg-pass ${POSTGRES_PASSWORD} -pg-db ${POSTGRES_DB}
+    entrypoint: /bin/server -port 3000 -pg-host chat-postgres -pg-user ${POSTGRES_USER} -pg-pass ${POSTGRES_PASSWORD} -pg-db ${POSTGRES_DB} -gcp-service-account /private/gcp-service-account.json
     ports:
       - 3000:3000
+    volumes:
+      - ./volumes/private:/private:ro
     depends_on:
       - chat-postgres
 
@@ -27,7 +29,7 @@ services:
     volumes:
       - ./volumes/postgres:/var/lib/postgresql/data
     env_file:
-      - path: ./volumes/env/production.env
+      - path: ./volumes/private/production.env
         required: true
 
 

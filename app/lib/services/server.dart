@@ -51,7 +51,7 @@ class Server {
   http.Client get client => http.Client();
 
   Future<void> deleteAccount() async {
-    await post('/api/auth/delete');
+    await delete('/api/auth');
   }
 
   Future<Session> login(String username, String password) async {
@@ -59,6 +59,20 @@ class Server {
       "alias": username,
       "password": password,
     }, Session.fromJson).then((e) => e!);
+  }
+
+  Future<void> logout() async {
+    if (app.session.session == null) return;
+    await post('/api/auth/logout');
+  }
+
+  Future<void> updateFcmToken(String? token) async {
+    if (app.session.session == null) return;
+    if (token == null) {
+      await delete('/api/auth/fcm');
+    } else {
+      await post('/api/auth/fcm', {"token": token});
+    }
   }
 
   Future<List<Room>> rooms() async {
@@ -105,6 +119,28 @@ class Server {
     );
     if (result.statusCode >= 300) {
       throw Exception('POST $uri -> ${result.statusCode} ${result.body}');
+    }
+    if (fromJson == null) return null;
+    return fromJson(jsonDecode(result.body));
+  }
+
+  Future<T?> delete<T>(
+    String path, [
+    Object? body,
+    T Function(dynamic json)? fromJson,
+  ]) async {
+    final uri = Uri.parse('$host$path');
+    final session = app.session.session;
+    final result = await client.delete(
+      uri,
+      body: body?.pipe(jsonEncode),
+      headers: {
+        'content-type': 'application/json',
+        if (session != null) 'authorization': 'Bearer ${session.token}',
+      },
+    );
+    if (result.statusCode >= 300) {
+      throw Exception('DELETE $uri -> ${result.statusCode} ${result.body}');
     }
     if (fromJson == null) return null;
     return fromJson(jsonDecode(result.body));

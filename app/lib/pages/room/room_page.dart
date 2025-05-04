@@ -1,8 +1,8 @@
 import 'dart:math';
 
 import 'package:app/app.dart';
-import 'package:app/core/router.dart';
-import 'package:app/data/server.dart';
+import 'package:app/blocs/router.dart';
+import 'package:app/services/server.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:stated/stated.dart';

@@ -1,4 +1,4 @@
-import 'package:app/core/router.dart';
+import 'package:app/blocs/router.dart';
 import 'package:flutter/material.dart';
 
 class UnknownPage with AppPage, AppPageView {

@@ -1,5 +1,5 @@
 import 'package:app/app.dart';
-import 'package:app/core/router.dart';
+import 'package:app/blocs/router.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
