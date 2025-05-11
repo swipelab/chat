@@ -5,6 +5,8 @@ const Storage = @import("storage.zig");
 const Message = @import("models.zig").Message;
 const jwt = @import("zig-jwt");
 const google = @import("vendor/google.zig");
+const core = @import("core.zig");
+const server = @import("server.zig");
 
 pub const std_options: std.Options = .{
     .log_level = .info,
@@ -26,159 +28,58 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
 
-    var port: u16 = 3000;
-    var pg_host: []const u8 = "127.0.0.1";
-    var pg_port: u16 = 5432;
-    var pg_db: []const u8 = "postgres";
-    var pg_user: []const u8 = "postgres";
-    var pg_pass: []const u8 = "postgres";
-    var gcp_service_account_file: []const u8 = "service_account.json";
-
-    var args = std.process.args();
-    while (args.next()) |arg| {
-        if (std.mem.eql(u8, "-port", arg)) port = parseInt(u16, args.next().?).?;
-        if (std.mem.eql(u8, "-pg-host", arg)) pg_host = args.next().?;
-        if (std.mem.eql(u8, "-pg-port", arg)) pg_port = parseInt(u16, args.next().?).?;
-        if (std.mem.eql(u8, "-pg-db", arg)) pg_db = args.next().?;
-        if (std.mem.eql(u8, "-pg-user", arg)) pg_user = args.next().?;
-        if (std.mem.eql(u8, "-pg-pass", arg)) pg_pass = args.next().?;
-        if (std.mem.eql(u8, "-gcp-service-account", arg)) gcp_service_account_file = args.next().?;
-    }
+    const config = try server.Config.initFromArgs();
 
     var db = try pg.Pool.init(allocator, .{
         .connect = .{
-            .port = pg_port,
-            .host = pg_host,
+            .port = config.pg_port,
+            .host = config.pg_host,
         },
         .auth = .{
-            .database = pg_db,
-            .username = pg_user,
-            .password = pg_pass,
+            .database = config.pg_db,
+            .username = config.pg_user,
+            .password = config.pg_pass,
         },
     });
     defer db.deinit();
 
     const secretSeed: []const u8 = "super secret key! really really!";
-    var app = App{
+    var srv: server.Server = .{
         .allocator = allocator,
-        .meta = .{
-            .identity = "swipe.home.ro",
-            .gcp_service_account_file = gcp_service_account_file,
-        },
+        .config = config,
         .db = db,
-        .jwt = .{
+        .auth = .{
             .key = try jwt.eddsa.Ed25519.KeyPair.generateDeterministic(secretSeed[0..32].*),
+            .identity = config.identity,
         },
-        .gcp = .{},
+        .google = .{},
     };
 
-    var server = try httpz.Server(*App).init(allocator, .{ .port = port, .address = "0.0.0.0" }, &app);
-    var router = try server.router(.{});
+    var httpServer = try httpz.Server(*server.Server).init(
+        allocator,
+        .{ .port = config.http_port, .address = config.http_host },
+        &srv,
+    );
+    var router = try httpServer.router(.{});
+
     router.get("/", home, .{});
     router.get("/api/ping", ping, .{});
-    router.post("/api/auth/register", register, .{});
-    router.post("/api/auth/login", login, .{});
-    router.post("/api/auth/logout", logout, .{});
-    router.delete("/api/auth", deleteAccount, .{});
-    router.post("/api/auth/fcm", postAuthFcmToken, .{});
-    router.delete("/api/auth/fcm", deleteAuthFcmToken, .{});
-    router.get("/api/room/:room_id/messages", getRoomMessages, .{});
-    router.post("/api/room/:room_id/message", postRoomMessage, .{});
-    router.get("/api/rooms", getRooms, .{});
+    router.post("/api/auth/register", auth_register, .{});
+    router.post("/api/auth/login", auth_login, .{});
+    router.post("/api/auth/logout", auth_logout, .{});
+    router.delete("/api/auth", auth_delete, .{});
+    router.post("/api/auth/fcm", auth_fcm_post, .{});
+    router.delete("/api/auth/fcm", auth_fcm_delete, .{});
+    router.get("/api/rooms", room_all, .{});
+    router.get("/api/room/:room_id", room_by_id, .{});
+    router.get("/api/room/:room_id/messages", room_messages, .{});
+    router.post("/api/room/:room_id/message", room_message_post, .{});
 
-    std.log.info("listening on {d}\n", .{port});
-    try server.listen();
+    std.log.info("listening on {d}\n", .{srv.config.http_port});
+    try httpServer.listen();
 }
 
-const App = struct {
-    allocator: std.mem.Allocator,
-    db: *pg.Pool,
-    jwt: struct {
-        key: jwt.eddsa.Ed25519.KeyPair,
-    },
-    meta: struct {
-        identity: []const u8,
-        gcp_service_account_file: []const u8,
-    },
-
-    gcp: struct {
-        m: std.Thread.Mutex = .{},
-        accessToken: ?[]const u8 = null,
-        accessExpiresAt: i64 = 0,
-    },
-
-    pub fn dispatch(self: *App, action: httpz.Action(*Context), req: *httpz.Request, res: *httpz.Response) !void {
-        std.log.info("{s} {s}", .{ @tagName(req.method), req.url.path });
-        var ctx = Context{
-            .app = self,
-            .storage = Storage.init(req.arena, self.db),
-            .arena = req.arena,
-            .user = self.loadAuthUser(
-                req.arena,
-                req.header("authorization"),
-            ),
-        };
-        return action(&ctx, req, res);
-    }
-
-    fn loadAuthUser(self: *App, arena: std.mem.Allocator, authorization: ?[]const u8) ?User {
-        const auth = authorization orelse return null;
-        var split = std.mem.splitScalar(u8, auth, ' ');
-        if (!std.mem.eql(u8, split.first(), "Bearer")) return null;
-        const bearerToken = split.next() orelse return null;
-
-        const p = jwt.SigningMethodEdDSA.init(arena);
-        const token = p.parse(bearerToken, self.jwt.key.public_key) catch return null;
-
-        var validator = jwt.Validator.init(token) catch return null;
-        defer validator.deinit();
-        if (!validator.hasBeenIssuedBy(self.meta.identity)) return null;
-        if (!validator.isPermittedFor(self.meta.identity)) return null;
-
-        return std.json.parseFromValueLeaky(User, arena, validator.claims, .{
-            .ignore_unknown_fields = true,
-        }) catch return null;
-    }
-
-    pub fn gcpAccessToken(self: *App) ?[]const u8 {
-        if (std.time.timestamp() < self.gcp.accessExpiresAt and self.gcp.accessToken != null) return self.gcp.accessToken;
-
-        self.gcp.m.lock();
-        defer self.gcp.m.unlock();
-
-        const gcp_firebase_messaging_scope: []const u8 = "https://www.googleapis.com/auth/firebase.messaging";
-        const accessToken = google.createJwtToken(self.allocator, .{
-            .key_json_file = self.meta.gcp_service_account_file,
-            .scope = gcp_firebase_messaging_scope,
-            .valid_for_sec = 3600,
-        }) catch return null;
-
-        self.gcp.accessToken = accessToken;
-        self.gcp.accessExpiresAt = std.time.timestamp() + 3500;
-
-        std.log.info("GCP Token {?s}", .{accessToken});
-
-        return accessToken;
-    }
-};
-
-const User = struct {
-    auth_id: i32,
-    name: []const u8,
-};
-
-const Context = struct {
-    app: *App,
-    storage: Storage,
-    arena: std.mem.Allocator,
-    user: ?User,
-
-    pub fn ensureUser(self: *Context) !User {
-        if (self.user) |user| return user else return error.InvalidUser;
-    }
-};
-
-fn home(_: *Context, _: *httpz.Request, res: *httpz.Response) !void {
+fn home(_: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
     res.status = 200;
     res.header("content-type", "text/html; charset=utf-8");
     res.body =
@@ -193,117 +94,80 @@ fn home(_: *Context, _: *httpz.Request, res: *httpz.Response) !void {
     ;
 }
 
-fn ping(ctx: *Context, _: *httpz.Request, res: *httpz.Response) !void {
+fn ping(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
     try res.json(.{ .user = ctx.user }, .{});
 }
 
-const key_length = 32;
-const salt_length = 32;
-
-fn deleteAccount(ctx: *Context, _: *httpz.Request, res: *httpz.Response) !void {
-    const user = try ctx.ensureUser();
-    try ctx.storage.auth.delete(.{ .auth_id = user.auth_id });
+fn auth_delete(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
+    try ctx.server.auth.delete(ctx);
     try res.json(.{}, .{});
 }
 
-fn postAuthFcmToken(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
+fn auth_fcm_post(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
     const user = try ctx.ensureUser();
     const request = try req.json(struct { token: []const u8 }) orelse return error.Invalid;
     try ctx.storage.fcm.upsert(.{ .auth_id = user.auth_id, .token = request.token });
     try res.json(.{}, .{});
 }
 
-fn deleteAuthFcmToken(ctx: *Context, _: *httpz.Request, res: *httpz.Response) !void {
-    const user = try ctx.ensureUser();
-    try ctx.storage.fcm.delete(.{ .auth_id = user.auth_id });
+fn auth_fcm_delete(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
+    try ctx.server.auth.fcmDelete(ctx);
     try res.json(.{}, .{});
 }
 
-fn logout(ctx: *Context, _: *httpz.Request, res: *httpz.Response) !void {
-    const user = try ctx.ensureUser();
-    try ctx.storage.fcm.delete(.{ .auth_id = user.auth_id });
+fn auth_logout(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
+    try ctx.server.auth.logout(ctx);
     try res.json(.{}, .{});
 }
 
-fn login(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
-    const Request = struct {
+fn auth_login(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    const body = try req.json(struct {
         alias: []const u8,
         password: []const u8,
-    };
-    const request = try req.json(Request) orelse return error.Invalid;
-    const auth = try ctx.storage.auth.selectByAlias(ctx.arena, request.alias);
-
-    var key: [key_length]u8 = undefined;
-    try std.crypto.pwhash.pbkdf2(
-        &key,
-        request.password,
-        auth.password_salt,
-        42,
-        std.crypto.auth.hmac.sha2.HmacSha256,
-    );
-
-    if (!std.mem.eql(u8, &key, auth.password_hash)) return error.Nope;
-
-    const claims = .{
-        .aud = ctx.app.meta.identity,
-        .sub = auth.auth_id,
-        .name = auth.alias,
-        .iss = ctx.app.meta.identity,
-        .auth_id = auth.auth_id,
-    };
-
-    const s = jwt.SigningMethodEdDSA.init(ctx.arena);
-
-    const token = try s.sign(claims, ctx.app.jwt.key.secret_key);
-
+    }) orelse return error.Invalid;
+    const token = try ctx.server.auth.login(ctx, .{
+        .alias = body.alias,
+        .password = body.password,
+    });
     try res.json(.{
-        .alias = auth.alias,
-        .token = token,
+        .alias = body.alias,
+        .token = token.token,
     }, .{});
 }
 
-fn register(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
-    const Register = struct {
+fn auth_register(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    const body = try req.json(struct {
         alias: []const u8,
         password: []const u8,
-    };
-
-    const request = try req.json(Register) orelse return error.InvalidRequest;
-
-    var key: [key_length]u8 = undefined;
-    var salt: [salt_length]u8 = undefined;
-    std.crypto.random.bytes(&salt);
-
-    try std.crypto.pwhash.pbkdf2(
-        &key,
-        request.password,
-        &salt,
-        42,
-        std.crypto.auth.hmac.sha2.HmacSha256,
-    );
-
-    try ctx.storage.auth.insert(.{
-        .alias = request.alias,
-        .password_salt = &salt,
-        .password_hash = &key,
+    }) orelse return error.InvalidRequest;
+    try ctx.server.auth.register(ctx, .{
+        .alias = body.alias,
+        .password = body.password,
     });
-    try res.json(.{ .ok = "ok" }, .{});
+    try res.json(.{}, .{});
 }
 
-fn getRooms(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
+fn room_all(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
     const rooms = try ctx.storage.room.select(req.arena);
     try res.json(rooms, .{});
 }
 
-fn getRoomMessages(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
-    const room_id = parseInt(i32, req.param("room_id")) orelse return error.InvalidRoomId;
+fn room_by_id(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    _ = try ctx.ensureUser();
+    const room_id = core.tryParseInt(i32, req.param("room_id")) orelse return error.InvalidRoomId;
+    const room = try ctx.storage.room.by_id(req.arena, room_id);
+    try res.json(room, .{});
+}
+
+fn room_messages(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    const room_id = core.tryParseInt(i32, req.param("room_id")) orelse return error.InvalidRoomId;
     const messages = try ctx.storage.message.selectByRoom(ctx.arena, room_id);
     try res.json(messages, .{});
 }
 
-fn postRoomMessage(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !void {
+fn room_message_post(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
     const user = try ctx.ensureUser();
-    const room_id = parseInt(i32, req.param("room_id")) orelse return error.InvalidRoomId;
+    const room_id = core.tryParseInt(i32, req.param("room_id")) orelse return error.InvalidRoomId;
     const payload = try req.json(Message) orelse return error.InvalidPayload;
 
     const safePayload = try std.json.stringifyAlloc(
@@ -325,18 +189,19 @@ fn postRoomMessage(ctx: *Context, req: *httpz.Request, res: *httpz.Response) !vo
 
     if (payload.stringify()) |body| {
         for (others) |other| {
-            try sendPushNotification(ctx, .{
-                //.title = "Message received",
+            sendPushNotification(ctx, .{
                 .body = body,
                 .token = other.token,
-            });
+            }) catch |e| {
+                std.log.err("unable to send push {any}", .{e});
+            };
         }
     }
 
     try res.json(.{ .roomId = room_id, .payload = payload }, .{});
 }
 
-fn sendPushNotification(ctx: *Context, opts: struct {
+fn sendPushNotification(ctx: *server.Context, opts: struct {
     token: []const u8,
     title: ?[]const u8 = null,
     body: []const u8,
@@ -359,11 +224,10 @@ fn sendPushNotification(ctx: *Context, opts: struct {
     defer client.deinit();
 
     const uri = try std.Uri.parse("https://fcm.googleapis.com/v1/projects/chat-swipelab/messages:send");
-    const accessToken = ctx.app.gcpAccessToken() orelse return;
+    const accessToken = ctx.server.gcpAccessToken() orelse return;
     const authorization = try std.fmt.allocPrint(arena, "Bearer {s}", .{accessToken});
 
-    var server_header_buffer: [1024]u8 = undefined;
-    //var server_body_buffer: [4096]u8 = undefined;
+    var server_header_buffer: [4096]u8 = undefined;
     var req = try client.open(.POST, uri, .{
         .server_header_buffer = &server_header_buffer,
         .headers = .{
@@ -388,10 +252,4 @@ fn sendPushNotification(ctx: *Context, opts: struct {
     try req.writeAll(body);
     try req.finish();
     try req.wait();
-}
-
-fn parseInt(comptime T: type, buf: ?[]const u8) ?T {
-    if (buf) |e| {
-        return std.fmt.parseInt(T, e, 10) catch return null;
-    } else return null;
 }

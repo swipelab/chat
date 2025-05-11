@@ -45,8 +45,12 @@ class RoomPage with AppPage, AppPageView, Emitter {
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             reverse: true,
             itemBuilder:
-                (context, index) =>
-                    ListTile(title: Text(messages[index].payload.toString())),
+                (context, index) => ListTile(
+                  title: Text(messages[index].payload.toString()),
+                  onTap: () {
+                    textField.text = messages[index].payload.toString();
+                  },
+                ),
             itemCount: messages.length,
           ),
           bottomNavigationBar: DecoratedBox(

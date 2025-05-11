@@ -30,3 +30,32 @@ flutter:
   uses-material-design: true
   assets:
     - assets/icon/
+
+  fonts:
+    - family: Unna
+      fonts:
+        - asset: assets/fonts/Unna/Unna-Regular.ttf
+        - asset: assets/fonts/Unna/Unna-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Unna/Unna-Bold.ttf
+          weight: 900
+        - asset: assets/fonts/Unna/Unna-BoldItalic.ttf
+          weight: 900
+          style: italic
+    - family: Arvo
+      fonts:
+        - asset: assets/fonts/Arvo/Arvo-Regular.ttf
+        - asset: assets/fonts/Arvo/Arvo-Italic.ttf
+          style: italic
+        - asset: assets/fonts/Arvo/Arvo-Bold.ttf
+          weight: 900
+        - asset: assets/fonts/Arvo/Arvo-BoldItalic.ttf
+          weight: 900
+          style: italic
+    - family: Lato
+      fonts:
+        - asset: assets/fonts/Lato/Lato-Regular.ttf
+        - asset: assets/fonts/Lato/Lato-Bold.ttf
+          weight: 700
+        - asset: assets/fonts/Lato/Lato-Black.ttf
+          weight: 900

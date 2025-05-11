@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:app/services/storage/config_table.dart';
 import 'package:app/services/storage/session_table.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:stated/stated.dart';
 
 FutureOr<void> onDatabaseCreate(Database db, int version) async {
   try {
@@ -19,11 +20,15 @@ FutureOr<void> onDatabaseCreate(Database db, int version) async {
   } catch (_) {}
 }
 
-class Storage {
-  Storage(this.db);
+class Storage with AsyncInit {
+  Storage();
 
-  final Database db;
-
+  late final Database db;
   late final SessionTable session = SessionTable(db);
   late final ConfigTable config = ConfigTable(db);
+
+  @override
+  Future<void> init() async {
+    db = await openDatabase('chatter', version: 2, onCreate: onDatabaseCreate);
+  }
 }

@@ -4,17 +4,23 @@ import 'package:app/blocs/session.dart';
 import 'package:app/services/server.dart';
 import 'package:stated/stated.dart';
 
-class Sync with Dispose {
+class Sync with Dispose, AsyncInit {
   Sync({
     required this.bus,
     required this.session,
     required this.server,
     required this.app,
   }) {
-    Emitter.map([
-      bus.on<SessionChanged>()..disposeBy(this),
-      bus.on<FcmTokenChanged>()..disposeBy(this),
-    ], _updateFcmToken).disposeBy(this);
+    Subscription()
+      ..add(bus.on<SessionChanged>()..disposeBy(this))
+      ..add(bus.on<FcmTokenChanged>()..disposeBy(this))
+      ..subscribe(updateFcmToken)
+      ..disposeBy(this);
+  }
+
+  @override
+  Future<void> init() async {
+    await updateFcmToken();
   }
 
   final Bus bus;
@@ -22,7 +28,7 @@ class Sync with Dispose {
   final Server server;
   final App app;
 
-  _updateFcmToken() {
-    server.updateFcmToken(app.config.fcmToken);
+  Future<void> updateFcmToken() async {
+    return server.updateFcmToken(app.config.fcmToken);
   }
 }

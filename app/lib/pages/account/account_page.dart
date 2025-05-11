@@ -40,10 +40,11 @@ class AccountPage with AppPage, AppPageView {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             ListTile(
-              leading: CircleAvatar(),
+              leading: CircleAvatar(child: Icon(Icons.person)),
               title: Text(app.session.session?.alias ?? 'unknown'),
+              onTap: () {},
             ),
-            ListTile(title: Text('logout'), onTap: app.session.logout),
+            ListTile(title: Text('logout'), onTap: logout),
             Expanded(child: SizedBox.shrink()),
 
             Padding(
@@ -60,5 +61,10 @@ class AccountPage with AppPage, AppPageView {
         ),
       ),
     );
+  }
+
+  void logout() {
+    pop();
+    app.session.logout();
   }
 }

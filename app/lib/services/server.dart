@@ -61,6 +61,10 @@ class Server {
     }, Session.fromJson).then((e) => e!);
   }
 
+  Future<void> register(String username, String password) async {
+    await post('/api/auth/register', {"alias": username, "password": password});
+  }
+
   Future<void> logout() async {
     if (app.session.session == null) return;
     await post('/api/auth/logout');
@@ -94,12 +98,15 @@ class Server {
     final uri = Uri.parse('$host$path');
     final result = await client.get(
       uri,
-      headers: {'content-type': 'application/json'},
+      headers: {'content-type': 'application/json; charset=utf-8'},
     );
     if (result.statusCode >= 300) {
       throw Exception('GET $uri -> ${result.statusCode} ${result.body}');
     }
-    return (jsonDecode(result.body) as List).map(fromJson).toList();
+    return (jsonDecode(utf8.decode(result.bodyBytes, allowMalformed: true))
+            as List)
+        .map(fromJson)
+        .toList();
   }
 
   Future<T?> post<T>(

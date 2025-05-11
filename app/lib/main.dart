@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await App.ensureInitialized();
+  await app.ensureInitialized();
 
   runApp(const AppView());
 }
@@ -15,13 +15,19 @@ class AppView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CupertinoTheme(
-      data: CupertinoThemeData(brightness: Brightness.dark),
+      data: CupertinoThemeData(
+        brightness: Brightness.dark,
+        textTheme: CupertinoTextThemeData(
+          textStyle: TextStyle(fontFamily: 'Lato'),
+        ),
+      ),
       child: MaterialApp.router(
         title: 'Chat',
         routerDelegate: app.router,
         routeInformationParser: app.routeParser,
         theme: ThemeData(
           useMaterial3: true,
+          fontFamily: 'Lato',
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.green,
             brightness: Brightness.dark,

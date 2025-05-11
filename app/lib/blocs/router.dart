@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app/app.dart';
+import 'package:app/blocs/session.dart';
 import 'package:app/pages/auth/auth_page.dart';
 import 'package:app/pages/home/home_page.dart';
 import 'package:app/pages/unknown_page.dart';
@@ -9,24 +10,24 @@ import 'package:flutter/material.dart';
 import 'package:stated/stated.dart';
 
 mixin AppPage<T> {
-  Page get page;
+  Page<T> get page;
 }
 
-mixin AppPageView on AppPage {
+mixin AppPageView<T> on AppPage<T> {
   @override
-  late final Page page = ProxyPage(this);
+  late final Page<T> page = AppPageViewBuilder<T>(this);
 
   Widget build(BuildContext context);
 }
 
-class ProxyPage extends Page {
-  const ProxyPage(this.child);
+class AppPageViewBuilder<T> extends Page<T> {
+  AppPageViewBuilder(this.child) : super(key: ObjectKey(child));
 
   final AppPageView child;
 
   @override
-  Route createRoute(BuildContext context) {
-    return MaterialPageRoute(
+  Route<T> createRoute(BuildContext context) {
+    return MaterialPageRoute<T>(
       settings: this,
       builder: (context) => child.build(context),
     );
@@ -34,7 +35,7 @@ class ProxyPage extends Page {
 
   @override
   bool operator ==(Object other) {
-    return other is ProxyPage && child.runtimeType == other.child.runtimeType;
+    return other is AppPageViewBuilder && child == other.child;
   }
 
   @override
@@ -43,18 +44,23 @@ class ProxyPage extends Page {
 
 class Router extends RouterDelegate<AppPage>
     with Emitter, PopNavigatorRouterDelegateMixin<AppPage> {
-  Router() {
-    app.session.subscribe(notifyListeners);
+  Router({required this.session}) {
+    session.subscribe(notifyListeners);
   }
+
+  final SessionBloc session;
 
   final AppPage home = HomePage();
   final List<AppPage> _pages = [];
 
   void handleDidRemovePage(Page page) {
-    final index = _pages.lastIndexWhere((e) => e.page == page);
+    final index = _pages.lastIndexWhere((e) => e.page.key == page.key);
     if (index < 0) return;
     _pages.removeAt(index);
   }
+
+  @override
+  AppPage? get currentConfiguration => _pages.lastOrNull ?? home;
 
   @override
   Future<void> setNewRoutePath(AppPage? configuration) async {
@@ -63,10 +69,6 @@ class Router extends RouterDelegate<AppPage>
 
   @override
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-
-  bool handlePopPage(Route route, result) {
-    return false;
-  }
 
   Future<T?> push<T>(AppPage<T> page) async {
     _pages.add(page);
@@ -89,6 +91,26 @@ class Router extends RouterDelegate<AppPage>
       pages: pages,
       onDidRemovePage: handleDidRemovePage,
     );
+  }
+
+  /// pop only if the last route corresponds with appPage
+  void pop<T>(AppPage appPage, T? result) {
+    Route? route;
+    //??? allow popping of pages at any level
+    navigatorKey.currentState?.popUntil((e) {
+      if (e.settings == appPage.page) {
+        route = e;
+      }
+      return true;
+    });
+    if (route != null) {
+      navigatorKey.currentState?.pop(result);
+    }
+  }
+
+  void popAll() {
+    _pages.clear();
+    notifyListeners();
   }
 }
 
@@ -114,8 +136,12 @@ class RouterParser extends RouteInformationParser<AppPage> {
   }
 }
 
-extension PageRouterExtension<T> on AppPage {
+extension PageRouterExtension<T> on AppPage<T> {
   Future push() => app.router.push(this);
+
+  void pop([T? result]) {
+    app.router.pop(this, result);
+  }
 }
 
 extension UriRouterExtension on Uri? {

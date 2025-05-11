@@ -74,6 +74,16 @@ const RoomTable = struct {
         }
         return result.items;
     }
+
+    pub fn by_id(self: *RoomTable, allocator: Allocator, room_id: i32) !Room {
+        var row = try self.db.rowOpts(
+            "SELECT room_id, alias FROM public.room WHERE room_id = $1",
+            .{room_id},
+            .{ .column_names = true },
+        ) orelse return error.NotFound;
+        defer row.deinit() catch {};
+        return try row.to(Room, .{ .allocator = allocator });
+    }
 };
 
 const MessageTable = struct {
@@ -178,13 +188,15 @@ const FcmTable = struct {
         allocator: std.mem.Allocator,
         auth_id: i32,
     }) ![]FcmEntity {
-        var query = try self.db.queryOpts("SELECT auth_id, token FROM public.fcm WHERE auth_id <> $1", .{
-            opts.auth_id,
-        }, .{ .column_names = true });
+        var query = try self.db.queryOpts(
+            "SELECT auth_id, token FROM public.fcm WHERE auth_id <> $1",
+            .{opts.auth_id},
+            .{ .column_names = true },
+        );
         defer query.deinit();
 
         var result = std.ArrayList(FcmEntity).init(opts.allocator);
-        var mapper = query.mapper(FcmEntity, .{ .allocator = opts.allocator, .dupe = true });
+        var mapper = query.mapper(FcmEntity, .{ .allocator = opts.allocator });
         while (try mapper.next()) |entry| {
             try result.append(entry);
         }

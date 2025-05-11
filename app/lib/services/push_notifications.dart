@@ -3,12 +3,15 @@ import 'package:app/blocs/bus.dart';
 import 'package:app/firebase_options.dart';
 import 'package:firebase_core/firebase_core.dart' as fire;
 import 'package:firebase_messaging/firebase_messaging.dart' as fire;
+import 'package:stated/stated.dart';
 
-class Firebase {
-  Firebase({required this.bus});
+class Firebase with AsyncInit {
+  Firebase({required this.bus, required this.app});
 
   final Bus bus;
+  final App app;
 
+  @override
   Future<void> init() async {
     await fire.Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
@@ -21,8 +24,6 @@ class Firebase {
 
   Future<void> handleTokenRefresh(String? token) async {
     app.config.fcmToken = token;
-    app.store();
-
     bus.publish(FcmTokenChanged(token));
   }
 }
