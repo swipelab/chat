@@ -43,17 +43,11 @@ pub fn main() !void {
     });
     defer db.deinit();
 
-    const secretSeed: []const u8 = "super secret key! really really!";
-    var srv: server.Server = .{
+    var srv = try server.Server.init(.{
         .allocator = allocator,
         .config = config,
         .db = db,
-        .auth = .{
-            .key = try jwt.eddsa.Ed25519.KeyPair.generateDeterministic(secretSeed[0..32].*),
-            .identity = config.identity,
-        },
-        .google = .{},
-    };
+    });
 
     var httpServer = try httpz.Server(*server.Server).init(
         allocator,
@@ -74,9 +68,25 @@ pub fn main() !void {
     router.get("/api/room/:room_id", room_by_id, .{});
     router.get("/api/room/:room_id/messages", room_messages, .{});
     router.post("/api/room/:room_id/message", room_message_post, .{});
+    router.get("/api/call/:call_id", call, .{});
 
     std.log.info("listening on {d}\n", .{srv.config.http_port});
     try httpServer.listen();
+}
+
+fn call(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    const call_id = core.tryParseInt(i32, req.param("call_id")) orelse return error.InvalidCallId;
+    const user = try ctx.ensureUser();
+    const callCtx = server.Server.WebsocketContext{
+        .call_id = call_id,
+        .user_id = user.auth_id,
+        .server = ctx.server,
+    };
+    if (try httpz.upgradeWebsocket(server.Server.WebsocketHandler, req, res, callCtx) == false) {
+        res.status = 400;
+        res.body = "invalid websocket";
+        return;
+    }
 }
 
 fn home(_: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
@@ -125,13 +135,14 @@ fn auth_login(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !
         alias: []const u8,
         password: []const u8,
     }) orelse return error.Invalid;
-    const token = try ctx.server.auth.login(ctx, .{
+    const auth = try ctx.server.auth.login(ctx, .{
         .alias = body.alias,
         .password = body.password,
     });
     try res.json(.{
         .alias = body.alias,
-        .token = token.token,
+        .token = auth.token,
+        .user_id = auth.user_id,
     }, .{});
 }
 

@@ -9,6 +9,7 @@ import 'package:app/routes.dart';
 import 'package:app/services/push_notifications.dart';
 import 'package:app/services/server.dart';
 import 'package:app/services/storage.dart';
+import 'package:logger/logger.dart';
 import 'package:stated/stated.dart';
 
 class App {
@@ -36,7 +37,7 @@ class App {
           ..addLazy((e) async => Storage())
           ..addLazy((e) async => Router(session: await e.resolve()))
           ..addLazy((e) async => RouterParser(parser: routes))
-          ..addLazy((e) async => Server('https://chat.swipelab.com'));
+          ..addLazy((e) async => Server('chat.swipelab.com'));
   }
 
   late final Store store;
@@ -45,7 +46,7 @@ class App {
 
   Storage get storage => store.get();
 
-  Config _config = Config();
+  final Config _config = Config();
 
   Config get config => _config;
 
@@ -70,3 +71,4 @@ class App {
 }
 
 final App app = App();
+final logger = Logger();

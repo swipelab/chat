@@ -10,6 +10,7 @@ identity: []const u8,
 key: jwt.eddsa.Ed25519.KeyPair,
 
 const AuthToken = struct {
+    user_id: i32,
     token: []const u8,
 };
 
@@ -67,6 +68,7 @@ pub fn login(self: *Self, ctx: *server.Context, args: struct {
 
     return .{
         .token = token,
+        .user_id = auth.auth_id,
     };
 }
 

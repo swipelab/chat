@@ -1,7 +1,7 @@
 import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
-import 'package:app/services/server.dart';
 import 'package:app/pages/account/account_page.dart';
+import 'package:app/services/server.dart';
 import 'package:flutter/material.dart';
 import 'package:stated/stated.dart';
 

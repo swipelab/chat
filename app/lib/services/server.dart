@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:app/app.dart';
 import 'package:app/models/session.dart';
@@ -47,6 +48,7 @@ class Server {
   Server(this.host);
 
   final String host;
+  final String scheme = "https";
 
   http.Client get client => http.Client();
 
@@ -95,7 +97,7 @@ class Server {
     String path,
     T Function(dynamic json) fromJson,
   ) async {
-    final uri = Uri.parse('$host$path');
+    final uri = Uri.parse('$scheme://$host$path');
     final result = await client.get(
       uri,
       headers: {'content-type': 'application/json; charset=utf-8'},
@@ -103,10 +105,7 @@ class Server {
     if (result.statusCode >= 300) {
       throw Exception('GET $uri -> ${result.statusCode} ${result.body}');
     }
-    return (jsonDecode(utf8.decode(result.bodyBytes, allowMalformed: true))
-            as List)
-        .map(fromJson)
-        .toList();
+    return (jsonDecode(result.body) as List).map(fromJson).toList();
   }
 
   Future<T?> post<T>(
@@ -114,7 +113,7 @@ class Server {
     Object? body,
     T Function(dynamic json)? fromJson,
   ]) async {
-    final uri = Uri.parse('$host$path');
+    final uri = Uri.parse('$scheme://$host$path');
     final session = app.session.session;
     final result = await client.post(
       uri,
@@ -136,7 +135,7 @@ class Server {
     Object? body,
     T Function(dynamic json)? fromJson,
   ]) async {
-    final uri = Uri.parse('$host$path');
+    final uri = Uri.parse('$scheme://$host$path');
     final session = app.session.session;
     final result = await client.delete(
       uri,
@@ -151,5 +150,15 @@ class Server {
     }
     if (fromJson == null) return null;
     return fromJson(jsonDecode(result.body));
+  }
+
+  Future<WebSocket> webSocket(String path) async {
+    final session = app.session.session;
+    return await WebSocket.connect(
+      'wss://$host$path',
+      headers: {
+        if (session != null) 'authorization': 'Bearer ${session.token}',
+      },
+    );
   }
 }

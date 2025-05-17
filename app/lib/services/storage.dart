@@ -8,7 +8,7 @@ import 'package:stated/stated.dart';
 FutureOr<void> onDatabaseCreate(Database db, int version) async {
   try {
     await db.execute(
-      'CREATE TABLE session (alias TEXT PRIMARY KEY, token TEXT NOT NULL)',
+      'CREATE TABLE session (alias TEXT PRIMARY KEY, token TEXT NOT NULL, user_id INTEGER NOT NULL)',
     );
   } catch (_) {}
 
