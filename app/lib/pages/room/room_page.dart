@@ -2,6 +2,7 @@ import 'dart:math';
 
 import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
+import 'package:app/pages/call/call_page.dart';
 import 'package:app/services/server.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -40,7 +41,14 @@ class RoomPage with AppPage, AppPageView, Emitter {
       listenable: this,
       builder: (context, _) {
         return Scaffold(
-          appBar: AppBar(),
+          appBar: AppBar(
+            actions: [
+              IconButton(
+                onPressed: () => CallPage(callId: '42').push(),
+                icon: Icon(Icons.video_call),
+              ),
+            ],
+          ),
           body: ListView.builder(
             keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
             reverse: true,

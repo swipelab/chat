@@ -29,7 +29,15 @@ class AppPageViewBuilder<T> extends Page<T> {
   Route<T> createRoute(BuildContext context) {
     return MaterialPageRoute<T>(
       settings: this,
-      builder: (context) => child.build(context),
+      builder: (context) {
+        if (child is Listenable) {
+          return ListenableBuilder(
+            listenable: child as Listenable,
+            builder: (context, _) => child.build(context),
+          );
+        }
+        return child.build(context);
+      },
     );
   }
 
@@ -54,9 +62,12 @@ class Router extends RouterDelegate<AppPage>
   final List<AppPage> _pages = [];
 
   void handleDidRemovePage(Page page) {
-    final index = _pages.lastIndexWhere((e) => e.page.key == page.key);
-    if (index < 0) return;
-    _pages.removeAt(index);
+    final found = _pages.firstWhereOrNull((e) => e.page.key == page.key);
+    if (found == null) return;
+    _pages.remove(found);
+    if (found is Dispose) {
+      (found as Dispose).dispose();
+    }
   }
 
   @override

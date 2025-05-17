@@ -19,6 +19,8 @@ dependencies:
   stated: # 3.0.1
     path: ../../stated
 
+  flutter_webrtc: 0.14.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

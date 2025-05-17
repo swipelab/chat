@@ -74,6 +74,7 @@ pub fn main() !void {
     router.get("/api/room/:room_id", room_by_id, .{});
     router.get("/api/room/:room_id/messages", room_messages, .{});
     router.post("/api/room/:room_id/message", room_message_post, .{});
+    router.post("/api/call", call, .{});
 
     std.log.info("listening on {d}\n", .{srv.config.http_port});
     try httpServer.listen();
@@ -96,6 +97,12 @@ fn home(_: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
 
 fn ping(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
     try res.json(.{ .user = ctx.user }, .{});
+}
+
+fn call(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
+    _ = try ctx.ensureUser();
+    const response = try ctx.server.calls.call();
+    try res.json(response, .{});
 }
 
 fn auth_delete(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
