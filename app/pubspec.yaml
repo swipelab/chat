@@ -19,14 +19,15 @@ dependencies:
   stated: # 3.0.1
     path: ../../stated
 
-  logger: ^2.5.0
-  flutter_webrtc: 0.14.0
+  logger: 2.5.0
+  flutter_webrtc: 0.14.1
+  image_picker: 1.1.2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^5.0.0
+  flutter_lints: 6.0.0
   flutter_launcher_icons: ^0.14.3
 
 flutter:
@@ -35,6 +36,11 @@ flutter:
     - assets/icon/
 
   fonts:
+    - family: Reddit Sans
+      fonts:
+        - asset: assets/fonts/Reddit_Sans/RedditSans-VariableFont_wght.ttf
+        - asset: assets/fonts/Reddit_Sans/RedditSans-Italic-VariableFont_wght.ttf
+          style: italic
     - family: Unna
       fonts:
         - asset: assets/fonts/Unna/Unna-Regular.ttf

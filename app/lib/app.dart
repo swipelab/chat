@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:app/blocs/bus.dart';
+import 'package:app/blocs/profile_bloc.dart';
 import 'package:app/blocs/router.dart';
 import 'package:app/blocs/session.dart';
 import 'package:app/blocs/sync.dart';
@@ -14,30 +15,30 @@ import 'package:stated/stated.dart';
 
 class App {
   App() {
-    store =
-        Store()
-          ..add(this)
-          ..addLazy(
-            (e) async => SessionBloc(
-              server: await e.resolve(),
-              bus: await e.resolve(),
-              storage: await e.resolve(),
-            ),
-          )
-          ..addLazy((e) async => Firebase(bus: await e.resolve(), app: this))
-          ..addLazy(
-            (e) async => Sync(
-              bus: await e.resolve(),
-              session: await e.resolve(),
-              server: await e.resolve(),
-              app: this,
-            ),
-          )
-          ..add(Bus())
-          ..addLazy((e) async => Storage())
-          ..addLazy((e) async => Router(session: await e.resolve()))
-          ..addLazy((e) async => RouterParser(parser: routes))
-          ..addLazy((e) async => Server('chat.swipelab.com'));
+    store = Store()
+      ..add(this)
+      ..addLazy(
+        (e) async => SessionBloc(
+          server: await e.resolve(),
+          bus: await e.resolve(),
+          storage: await e.resolve(),
+        ),
+      )
+      ..addLazy((e) async => Firebase(bus: await e.resolve(), app: this))
+      ..addLazy(
+        (e) async => Sync(
+          bus: await e.resolve(),
+          session: await e.resolve(),
+          server: await e.resolve(),
+          app: this,
+        ),
+      )
+      ..addLazy((e) async => ProfileBloc(server: await e.resolve()))
+      ..add(Bus())
+      ..addLazy((e) async => Storage())
+      ..addLazy((e) async => Router(session: await e.resolve()))
+      ..addLazy((e) async => RouterParser(parser: routes))
+      ..addLazy((e) async => Server('chat.swipelab.com'));
   }
 
   late final Store store;
@@ -61,6 +62,8 @@ class App {
   }
 
   Completer? _ensureInitialized;
+
+  ProfileBloc get profile => store.get();
 
   Future<void> ensureInitialized() async {
     if (_ensureInitialized != null) return _ensureInitialized!.future;

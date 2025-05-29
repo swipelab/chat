@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:app/app.dart';
 import 'package:app/models/session.dart';
+import 'package:flutter/src/painting/image_provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:stated/stated.dart';
 
@@ -52,6 +54,16 @@ class Server {
 
   http.Client get client => http.Client();
 
+  NetworkImage get profilePicture {
+    final session = app.session.session;
+    return NetworkImage(
+      'https://$host/api/profile/picture',
+      headers: {
+        if (session != null) 'authorization': 'Bearer ${session.token}',
+      },
+    );
+  }
+
   Future<void> deleteAccount() async {
     await delete('/api/auth');
   }
@@ -72,13 +84,14 @@ class Server {
     await post('/api/auth/logout');
   }
 
-  Future<void> updateFcmToken(String? token) async {
-    if (app.session.session == null) return;
-    if (token == null) {
-      await delete('/api/auth/fcm');
-    } else {
-      await post('/api/auth/fcm', {"token": token});
-    }
+  Future<void> postFcmToken(String? token) async {
+    if (app.session.session == null || token == null) return;
+    await post('/api/auth/fcm', {"token": token});
+  }
+
+  Future<void> postProfilePicture(Uint8List bytes) async {
+    assert(app.session.session != null);
+    await postBytes('/api/profile/picture', bytes);
   }
 
   Future<List<Room>> rooms() async {
@@ -120,6 +133,28 @@ class Server {
       body: body?.pipe(jsonEncode),
       headers: {
         'content-type': 'application/json',
+        if (session != null) 'authorization': 'Bearer ${session.token}',
+      },
+    );
+    if (result.statusCode >= 300) {
+      throw Exception('POST $uri -> ${result.statusCode} ${result.body}');
+    }
+    if (fromJson == null) return null;
+    return fromJson(jsonDecode(result.body));
+  }
+
+  Future<T?> postBytes<T>(
+    String path,
+    Uint8List body, [
+    T Function(dynamic json)? fromJson,
+  ]) async {
+    final uri = Uri.parse('$scheme://$host$path');
+    final session = app.session.session;
+    final result = await client.post(
+      uri,
+      body: body,
+      headers: {
+        'content-type': 'application/octet-stream',
         if (session != null) 'authorization': 'Bearer ${session.token}',
       },
     );

@@ -1,9 +1,10 @@
 import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
+import 'package:app/pages/settings/profile_page.dart';
 import 'package:flutter/material.dart';
 
 class AccountPage with AppPage, AppPageView {
-  showAlertDialog(BuildContext context) {
+  void handleDeleteAccount(BuildContext context) {
     // set up the buttons
     Widget cancelButton = TextButton(
       onPressed: Navigator.of(context).pop,
@@ -34,37 +35,22 @@ class AccountPage with AppPage, AppPageView {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text('Account')),
-      body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            ListTile(
-              leading: CircleAvatar(child: Icon(Icons.person)),
-              title: Text(app.session.session?.alias ?? 'unknown'),
-              onTap: () {},
-            ),
-            ListTile(title: Text('logout'), onTap: logout),
-            Expanded(child: SizedBox.shrink()),
-
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: TextButton(
-                onPressed: () => showAlertDialog(context),
-                child: Text(
-                  'Delete Account',
-                  style: TextStyle(color: Colors.red),
-                ),
+      appBar: AppBar(
+        title: Text('Account'),
+      ),
+      body: ListView(
+        children: [
+          SizedBox(height: 36),
+          Group(
+            children: [
+              GroupTile(
+                onTap: () => handleDeleteAccount(context),
+                child: Text('Delete Account'),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
+        ],
       ),
     );
-  }
-
-  void logout() {
-    pop();
-    app.session.logout();
   }
 }

@@ -142,6 +142,29 @@ const AuthTable = struct {
         });
     }
 
+    pub fn updateProfilePicture(self: *AuthTable, entry: struct {
+        auth_id: i32,
+        data: []const u8,
+    }) !void {
+        _ = try self.db.exec("UPDATE public.auth SET profile_picture = $1 WHERE auth_id = $2", .{
+            entry.data,
+            entry.auth_id,
+        });
+    }
+
+    pub fn selectProfilePicture(self: *AuthTable, opts: struct {
+        auth_id: i32,
+        allocator: Allocator,
+    }) ![]const u8 {
+        var row = try self.db.row("SELECT profile_picture FROM public.auth WHERE auth_id = $1", .{
+            opts.auth_id,
+        }) orelse return error.NotFound;
+        defer row.deinit() catch {};
+
+        const result = try row.to(struct { profile_picture: []const u8 }, .{ .allocator = opts.allocator });
+        return result.profile_picture;
+    }
+
     pub fn selectByAlias(self: *AuthTable, allocator: Allocator, alias: []const u8) !Auth {
         var row = try self.db.row(
             "SELECT auth_id, alias, password_hash, password_salt FROM public.auth WHERE alias = $1",

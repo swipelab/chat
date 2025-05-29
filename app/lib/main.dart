@@ -18,7 +18,7 @@ class AppView extends StatelessWidget {
       data: CupertinoThemeData(
         brightness: Brightness.dark,
         textTheme: CupertinoTextThemeData(
-          textStyle: TextStyle(fontFamily: 'Lato'),
+          textStyle: TextStyle(fontFamily: 'Reddit Sans'),
         ),
       ),
       child: MaterialApp.router(
@@ -27,7 +27,15 @@ class AppView extends StatelessWidget {
         routeInformationParser: app.routeParser,
         theme: ThemeData(
           useMaterial3: true,
-          fontFamily: 'Lato',
+
+          actionIconTheme: ActionIconThemeData(
+            backButtonIconBuilder: (_) => Icon(CupertinoIcons.back),
+          ),
+          appBarTheme: AppBarTheme(
+            centerTitle: true,
+            iconTheme: IconThemeData(),
+          ),
+          fontFamily: 'Reddit Sans',
           colorScheme: ColorScheme.fromSeed(
             seedColor: Colors.green,
             brightness: Brightness.dark,

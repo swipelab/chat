@@ -75,3 +75,5 @@ pub fn encodePercent(allocator: std.mem.Allocator, entries: []const struct { key
 fn isValidChar(_: u8) bool {
     return true;
 }
+
+pub const Mb: usize = 1024 * 1024;

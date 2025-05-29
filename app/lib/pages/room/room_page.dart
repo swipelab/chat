@@ -49,13 +49,12 @@ class RoomPage with AppPage, AppPageView, Emitter {
       body: ListView.builder(
         keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
         reverse: true,
-        itemBuilder:
-            (context, index) => ListTile(
-              title: Text(messages[index].payload.toString()),
-              onTap: () {
-                textField.text = messages[index].payload.toString();
-              },
-            ),
+        itemBuilder: (context, index) => ListTile(
+          title: Text(messages[index].payload.toString()),
+          onTap: () {
+            textField.text = messages[index].payload.toString();
+          },
+        ),
         itemCount: messages.length,
       ),
       bottomNavigationBar: DecoratedBox(
@@ -69,12 +68,10 @@ class RoomPage with AppPage, AppPageView, Emitter {
           ),
           child: Row(
             children: [
-              // IconButton(
-              //   onPressed: () {},
-              //   icon: Icon(Icons.add, color: Colors.white, size: 32),
-              // ),
               Expanded(
                 child: CupertinoTextField(
+                  minLines: 1,
+                  maxLines: 5,
                   controller: textField,
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),

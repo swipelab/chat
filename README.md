@@ -21,7 +21,7 @@ A breath of fresh air in communications.
     - [ ] Audio    
 - [x] Profile
     - [x] Username
-    - [ ] Avatar
+    - [x] Avatar
 
 
 # Build Server

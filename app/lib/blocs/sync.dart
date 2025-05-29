@@ -29,6 +29,6 @@ class Sync with Dispose, AsyncInit {
   final App app;
 
   Future<void> updateFcmToken() async {
-    return server.updateFcmToken(app.config.fcmToken);
+    return server.postFcmToken(app.config.fcmToken);
   }
 }

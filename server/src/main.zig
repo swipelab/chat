@@ -51,7 +51,11 @@ pub fn main() !void {
 
     var httpServer = try httpz.Server(*server.Server).init(
         allocator,
-        .{ .port = config.http_port, .address = config.http_host },
+        .{
+            .port = config.http_port,
+            .address = config.http_host,
+            .request = .{ .max_body_size = 2 * core.Mb },
+        },
         &srv,
     );
     var router = try httpServer.router(.{});
@@ -64,6 +68,8 @@ pub fn main() !void {
     router.delete("/api/auth", auth_delete, .{});
     router.post("/api/auth/fcm", auth_fcm_post, .{});
     router.delete("/api/auth/fcm", auth_fcm_delete, .{});
+    router.get("/api/profile/picture", profile_picture_get, .{});
+    router.post("/api/profile/picture", profile_picture_post, .{});
     router.get("/api/rooms", room_all, .{});
     router.get("/api/room/:room_id", room_by_id, .{});
     router.get("/api/room/:room_id/messages", room_messages, .{});
@@ -123,6 +129,24 @@ fn auth_fcm_post(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response
 fn auth_fcm_delete(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
     try ctx.server.auth.fcmDelete(ctx);
     try res.json(.{}, .{});
+}
+
+fn profile_picture_post(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    const user = try ctx.ensureUser();
+    const body = req.body() orelse return error.MissingBody;
+    try ctx.storage.auth.updateProfilePicture(.{ .auth_id = user.auth_id, .data = body });
+    try res.json(.{}, .{});
+}
+
+fn profile_picture_get(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {
+    const user = try ctx.ensureUser();
+
+    res.status = 200;
+    res.content_type = .JPG;
+    res.body = try ctx.storage.auth.selectProfilePicture(.{
+        .auth_id = user.auth_id,
+        .allocator = res.arena,
+    });
 }
 
 fn auth_logout(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {

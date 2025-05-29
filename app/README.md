@@ -10,3 +10,4 @@ Chat Client
     - [ ] Switch Video/Audio
     - [ ] Configure Stream
     - [x] Signaling
+- [ ] File Picker iOS
