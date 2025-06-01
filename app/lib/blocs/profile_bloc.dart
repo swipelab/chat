@@ -19,13 +19,12 @@ class ProfileBloc {
     final image = await picker.pickImage(
       source: ImageSource.camera,
       preferredCameraDevice: CameraDevice.front,
-      imageQuality: 70,
+      imageQuality: 80,
       maxWidth: 512,
       maxHeight: 512,
     );
     if (image == null) return;
-    final body = await image.readAsBytes();
-    await app.server.postProfilePicture(body);
+    await image.readAsBytes().then(app.server.postProfilePicture);
     await picture?.evict();
   }
 }

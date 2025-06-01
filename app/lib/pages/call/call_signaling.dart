@@ -2,13 +2,15 @@ import 'dart:convert';
 
 import 'package:app/app.dart';
 import 'package:app/core/core.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_webrtc/flutter_webrtc.dart';
 
 class CallSignaling {
   CallSignaling({
     required this.callId,
     required this.selfId,
-    this.onAddRemoteStream,
+    this.onRemoteStream,
+    this.onClose,
   });
 
   final int callId;
@@ -22,7 +24,8 @@ class CallSignaling {
 
   Socket? _socket;
 
-  void Function(MediaStream)? onAddRemoteStream;
+  ValueSetter<MediaStream>? onRemoteStream;
+  final VoidCallback? onClose;
 
   Future<void> join() async {
     final peerConnectionConfig = {
@@ -30,12 +33,14 @@ class CallSignaling {
       ...{'sdpSemantics': 'unified-plan'},
     };
 
-    RTCPeerConnection peerConnection =
-        pc = await createPeerConnection(peerConnectionConfig, _p2pConstraints);
+    RTCPeerConnection peerConnection = pc = await createPeerConnection(
+      peerConnectionConfig,
+      _p2pConstraints,
+    );
 
     peerConnection.onTrack = (event) {
       if (event.track.kind == 'video') {
-        onAddRemoteStream?.call(event.streams[0]);
+        onRemoteStream?.call(event.streams[0]);
       }
     };
     if (_localStream == null) {
@@ -105,6 +110,10 @@ class CallSignaling {
                 ),
               );
             }
+          case 'bye':
+            {
+              onClose?.call();
+            }
         }
       },
       onClose: (code, reason) {
@@ -122,18 +131,17 @@ class CallSignaling {
   Future<MediaStream> _createLocalStream([bool userScreen = false]) async {
     final Map<String, dynamic> mediaConstraints = {
       'audio': userScreen ? false : true,
-      'video':
-          userScreen
-              ? true
-              : {
-                'mandatory': {
-                  'minWidth': '640',
-                  'minHeight': '480',
-                  'minFrameRate': '30',
-                },
-                'facingMode': 'user',
-                'optional': [],
+      'video': userScreen
+          ? true
+          : {
+              'mandatory': {
+                'minWidth': '1280',
+                'minHeight': '720',
+                'minFrameRate': '30',
               },
+              'facingMode': 'user',
+              'optional': [],
+            },
     };
 
     return await navigator.mediaDevices.getUserMedia(mediaConstraints);
@@ -193,6 +201,7 @@ class CallSignaling {
   void _send(Map<String, Object> json) => _socket?.send(jsonEncode(json));
 
   void dispose() {
+    _send({'event': 'bye'});
     _socket?.close();
     _localStream?.dispose();
     pc?.dispose();

@@ -29,17 +29,25 @@ class CallPage with Emitter, AppPage, AppPageView {
   }
 
   final int callId;
-  final ListEmitter<String> stream = ListEmitter(['call started']);
+  final ListEmitter<String> stream = ListEmitter();
   final RTCVideoRenderer _localRenderer = RTCVideoRenderer();
   final RTCVideoRenderer _remoteRenderer = RTCVideoRenderer();
   late final CallSignaling signaling = CallSignaling(
     callId: callId,
     selfId: app.session.session!.userId,
-    onAddRemoteStream: handleAddRemoteStream,
+    onRemoteStream: handleRemoteStream,
+    onClose: handleClose,
   );
 
-  void handleAddRemoteStream(MediaStream stream) {
-    _remoteRenderer.srcObject = stream;
+  void handleRemoteStream(MediaStream value) async {
+    stream.add('call started');
+    await _remoteRenderer.setSrcObject(stream: value);
+    notifyListeners();
+  }
+
+  void handleClose() async {
+    stream.add('call ended');
+    await _remoteRenderer.setSrcObject(stream: null);
     notifyListeners();
   }
 
@@ -82,9 +90,8 @@ class CallPage with Emitter, AppPage, AppPageView {
                 listenable: stream,
                 builder: (context, _) {
                   return ListView.builder(
-                    itemBuilder:
-                        (context, index) =>
-                            ListTile(title: Text(stream[index])),
+                    itemBuilder: (context, index) =>
+                        ListTile(title: Text(stream[index])),
                     itemCount: stream.length,
                   );
                 },

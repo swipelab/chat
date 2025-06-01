@@ -8,6 +8,10 @@ class Palette {
     grey: Color(0xFF323232),
   );
 
+  late final OutlinePalette outline = OutlinePalette(
+    grey: Color(0xFF222222),
+  );
+
   final Color white = const Color(0xFFFFFFFF);
   final Color transparent = const Color(0x00000000);
 
@@ -39,6 +43,12 @@ class FillPalette {
   final Color grey;
 
   FillPalette({required this.grey});
+}
+
+class OutlinePalette {
+  final Color grey;
+
+  OutlinePalette({required this.grey});
 }
 
 final colors = Palette();

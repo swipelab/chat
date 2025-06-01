@@ -2,8 +2,9 @@ import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
 import 'package:app/theme.dart';
 import 'package:flutter/material.dart';
+import 'package:stated/stated.dart';
 
-class ProfilePage with AppPage, AppPageView {
+class ProfilePage with AppPage, AppPageView, Emitter {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -11,16 +12,22 @@ class ProfilePage with AppPage, AppPageView {
       body: ListView(
         children: [
           SizedBox(height: 24),
-          ProfilePictureTile(),
+          ProfilePictureTile(onTap: takeProfilePicture),
           SizedBox(height: 24),
         ],
       ),
     );
   }
+
+  void takeProfilePicture() {
+    app.profile.takePicture().whenComplete(notifyListeners);
+  }
 }
 
 class ProfilePictureTile extends StatelessWidget {
-  const ProfilePictureTile({super.key});
+  const ProfilePictureTile({this.onTap, super.key});
+
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -33,7 +40,7 @@ class ProfilePictureTile extends StatelessWidget {
           foregroundImage: app.profile.picture,
         ),
         TextButton(
-          onPressed: app.profile.takePicture,
+          onPressed: onTap,
           child: Text('Take Photo'),
         ),
       ],

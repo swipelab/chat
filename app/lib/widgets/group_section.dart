@@ -1,7 +1,7 @@
 import 'package:app/theme.dart';
+import 'package:app/widgets/line.dart';
 import 'package:app/widgets/touch.dart';
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
 import 'package:stated/stated.dart';
 
 class GroupSection extends StatelessWidget {
@@ -27,11 +27,8 @@ class GroupSection extends StatelessWidget {
         shrinkWrap: true,
         physics: NeverScrollableScrollPhysics(),
         itemBuilder: (context, index) => children[index],
-        separatorBuilder: (_, _) => Container(
-          height: 1,
+        separatorBuilder: (_, _) => const Line(
           margin: EdgeInsets.only(left: 48),
-          width: double.infinity,
-          color: Colors.white.withValues(alpha: .2),
         ),
         itemCount: children.length,
       ),
