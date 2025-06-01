@@ -68,6 +68,7 @@ pub fn main() !void {
     router.delete("/api/auth", auth_delete, .{});
     router.post("/api/auth/fcm", auth_fcm_post, .{});
     router.delete("/api/auth/fcm", auth_fcm_delete, .{});
+    router.get("/api/user/:auth_id/profile/picture", user_profile_picture_get, .{});
     router.get("/api/profile/picture", profile_picture_get, .{});
     router.post("/api/profile/picture", profile_picture_post, .{});
     router.get("/api/rooms", room_all, .{});
@@ -136,6 +137,19 @@ fn profile_picture_post(ctx: *server.Context, req: *httpz.Request, res: *httpz.R
     const body = req.body() orelse return error.MissingBody;
     try ctx.storage.auth.updateProfilePicture(.{ .auth_id = user.auth_id, .data = body });
     try res.json(.{}, .{});
+}
+
+fn user_profile_picture_get(ctx: *server.Context, req: *httpz.Request, res: *httpz.Response) !void {
+    _ = try ctx.ensureUser();
+
+    const auth_id = core.tryParseInt(i32, req.param("auth_id")) orelse return error.InvalidAuthId;
+
+    res.status = 200;
+    res.content_type = .JPG;
+    res.body = try ctx.storage.auth.selectProfilePicture(.{
+        .auth_id = auth_id,
+        .allocator = res.arena,
+    });
 }
 
 fn profile_picture_get(ctx: *server.Context, _: *httpz.Request, res: *httpz.Response) !void {

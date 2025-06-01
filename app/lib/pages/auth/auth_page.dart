@@ -1,7 +1,7 @@
 import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
 import 'package:app/painters/horizontal_strike_painter.dart';
-import 'package:flutter/cupertino.dart';
+import 'package:app/widgets/input.dart';
 import 'package:flutter/material.dart';
 import 'package:stated/stated.dart';
 
@@ -33,24 +33,11 @@ class AuthPage with AppPage, AppPageView, Emitter {
                     SizedBox(height: 32),
                     Text('Username', textAlign: TextAlign.left),
                     SizedBox(height: 4),
-                    CupertinoTextField(
-                      controller: usernameField,
-                      padding: EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 8,
-                      ),
-                    ),
+                    Input(controller: usernameField),
                     SizedBox(height: 16),
                     Text('Password', textAlign: TextAlign.left),
                     SizedBox(height: 4),
-                    CupertinoTextField(
-                      obscureText: true,
-                      controller: passwordField,
-                      padding: EdgeInsets.symmetric(
-                        vertical: 12,
-                        horizontal: 8,
-                      ),
-                    ),
+                    Input(controller: passwordField, obscureText: true),
                     SizedBox(height: 8),
                     TextButton(
                       onPressed: () async {
@@ -65,7 +52,7 @@ class AuthPage with AppPage, AppPageView, Emitter {
                         } catch (_) {
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Something went wrong :(')),
+                            SnackBar(content: Text('That did not work :(')),
                           );
                         }
                       },

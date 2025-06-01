@@ -12,7 +12,7 @@ class Socket {
   void Function(dynamic msg)? onMessage;
   void Function(int? code, String? reason)? onClose;
 
-  connect() async {
+  Future<void> connect() async {
     try {
       _ws = await app.server.webSocket(url);
       onOpen?.call();
@@ -31,11 +31,11 @@ class Socket {
     }
   }
 
-  send(dynamic data) {
+  void send(dynamic data) {
     _ws?.add(data);
   }
 
-  close() {
+  void close() {
     _ws?.close();
   }
 }

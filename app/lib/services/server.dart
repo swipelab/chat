@@ -1,12 +1,11 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:app/app.dart';
 import 'package:app/models/session.dart';
-import 'package:flutter/src/painting/image_provider.dart';
+import 'package:flutter/painting.dart';
 import 'package:http/http.dart' as http;
-import 'package:stated/stated.dart';
+import 'package:stated/io.dart';
 
 class Room {
   const Room({required this.roomId, required this.alias});
@@ -38,28 +37,47 @@ class MessagePayload {
 
 class Message {
   final MessagePayload payload;
+  final int senderAuthId;
 
-  Message({required this.payload});
+  Message({
+    required this.payload,
+    required this.senderAuthId,
+  });
 
   static Message fromJson(dynamic json) {
-    return Message(payload: MessagePayload.fromJson(json['payload']));
+    return Message(
+      payload: MessagePayload.fromJson(json['payload']),
+      senderAuthId: json['sender_auth_id'],
+    );
   }
 }
 
-class Server {
-  Server(this.host);
+class ChatApi extends HttpClient {
+  ChatApi(this.host);
 
+  @override
   final String host;
+
+  @override
   final String scheme = "https";
 
+  @override
   http.Client get client => http.Client();
 
-  NetworkImage get profilePicture {
+  Session? get session => app.session.session;
+
+  @override
+  Map<String, String> get headers => {
+    if (session != null) 'authorization': 'Bearer ${session?.token}',
+  };
+
+  NetworkImage? avatar(String? userId) {
     final session = app.session.session;
+    if (userId == null || session == null) return null;
     return NetworkImage(
-      'https://$host/api/profile/picture',
+      'https://$host/api/user/$userId/profile/picture',
       headers: {
-        if (session != null) 'authorization': 'Bearer ${session.token}',
+        'authorization': 'Bearer ${session.token}',
       },
     );
   }
@@ -69,14 +87,21 @@ class Server {
   }
 
   Future<Session> login(String username, String password) async {
-    return await post('/api/auth/login', {
-      "alias": username,
-      "password": password,
-    }, Session.fromJson).then((e) => e!);
+    return await post(
+      '/api/auth/login',
+      body: {
+        "alias": username,
+        "password": password,
+      },
+      marshal: Session.fromJson,
+    );
   }
 
   Future<void> register(String username, String password) async {
-    await post('/api/auth/register', {"alias": username, "password": password});
+    await post(
+      '/api/auth/register',
+      body: {"alias": username, "password": password},
+    );
   }
 
   Future<void> logout() async {
@@ -86,114 +111,30 @@ class Server {
 
   Future<void> postFcmToken(String? token) async {
     if (app.session.session == null || token == null) return;
-    await post('/api/auth/fcm', {"token": token});
+    await post('/api/auth/fcm', body: {"token": token});
   }
 
-  Future<void> postProfilePicture(Uint8List bytes) async {
+  Future<void> postProfilePicture(Uint8List buffer) async {
     assert(app.session.session != null);
-    await postBytes('/api/profile/picture', bytes);
+    await postBuffer('/api/profile/picture', buffer);
   }
 
   Future<List<Room>> rooms() async {
-    return await getList('/api/rooms', Room.fromJson);
+    return await get('/api/rooms', marshal: Room.fromJson.list);
   }
 
   Future<List<Message>> messages(int roomId) async {
-    return await getList('/api/room/$roomId/messages', Message.fromJson);
+    return await get(
+      '/api/room/$roomId/messages',
+      marshal: Message.fromJson.list,
+    );
   }
 
   Future<void> postMessage(int roomId, Map<String, Object?> payload) async {
-    await post('/api/room/$roomId/message', payload);
-  }
-
-  Future<List<T>> getList<T>(
-    String path,
-    T Function(dynamic json) fromJson,
-  ) async {
-    final uri = Uri.parse('$scheme://$host$path');
-    final result = await client.get(
-      uri,
-      headers: {'content-type': 'application/json; charset=utf-8'},
-    );
-    if (result.statusCode >= 300) {
-      throw Exception('GET $uri -> ${result.statusCode} ${result.body}');
-    }
-    return (jsonDecode(result.body) as List).map(fromJson).toList();
-  }
-
-  Future<T?> post<T>(
-    String path, [
-    Object? body,
-    T Function(dynamic json)? fromJson,
-  ]) async {
-    final uri = Uri.parse('$scheme://$host$path');
-    final session = app.session.session;
-    final result = await client.post(
-      uri,
-      body: body?.pipe(jsonEncode),
-      headers: {
-        'content-type': 'application/json',
-        if (session != null) 'authorization': 'Bearer ${session.token}',
-      },
-    );
-    if (result.statusCode >= 300) {
-      throw Exception('POST $uri -> ${result.statusCode} ${result.body}');
-    }
-    if (fromJson == null) return null;
-    return fromJson(jsonDecode(result.body));
-  }
-
-  Future<T?> postBytes<T>(
-    String path,
-    Uint8List body, [
-    T Function(dynamic json)? fromJson,
-  ]) async {
-    final uri = Uri.parse('$scheme://$host$path');
-    final session = app.session.session;
-    final result = await client.post(
-      uri,
-      body: body,
-      headers: {
-        'content-type': 'application/octet-stream',
-        if (session != null) 'authorization': 'Bearer ${session.token}',
-      },
-    );
-    if (result.statusCode >= 300) {
-      throw Exception('POST $uri -> ${result.statusCode} ${result.body}');
-    }
-    if (fromJson == null) return null;
-    return fromJson(jsonDecode(result.body));
-  }
-
-  Future<T?> delete<T>(
-    String path, [
-    Object? body,
-    T Function(dynamic json)? fromJson,
-  ]) async {
-    final uri = Uri.parse('$scheme://$host$path');
-    final session = app.session.session;
-    final result = await client.delete(
-      uri,
-      body: body?.pipe(jsonEncode),
-      headers: {
-        'content-type': 'application/json',
-        if (session != null) 'authorization': 'Bearer ${session.token}',
-      },
-    );
-    if (result.statusCode >= 300) {
-      throw Exception('DELETE $uri -> ${result.statusCode} ${result.body}');
-    }
-    if (fromJson == null) return null;
-    return fromJson(jsonDecode(result.body));
+    await post('/api/room/$roomId/message', body: payload);
   }
 
   Future<WebSocket> webSocket(String path) async {
-    final session = app.session.session;
-    return await WebSocket.connect(
-      'wss://$host$path',
-      headers: {
-        if (session != null) 'authorization': 'Bearer ${session.token}',
-      },
-    );
+    return await WebSocket.connect('wss://$host$path', headers: headers);
   }
 }

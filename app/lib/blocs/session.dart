@@ -1,5 +1,6 @@
+import 'dart:async';
+
 import 'package:app/blocs/bus.dart';
-import 'package:app/core/core.dart';
 import 'package:app/models/session.dart';
 import 'package:app/services/server.dart';
 import 'package:app/services/storage.dart';
@@ -9,7 +10,7 @@ class SessionBloc with Emitter, AsyncInit {
   SessionBloc({required this.storage, required this.server, required this.bus});
 
   final Storage storage;
-  final Server server;
+  final ChatApi server;
   final Bus bus;
 
   bool get isLoggedIn => session != null;

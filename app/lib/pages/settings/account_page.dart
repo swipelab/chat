@@ -1,6 +1,6 @@
 import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
-import 'package:app/pages/settings/profile_page.dart';
+import 'package:app/widgets/group_section.dart';
 import 'package:flutter/material.dart';
 
 class AccountPage with AppPage, AppPageView {
@@ -41,7 +41,7 @@ class AccountPage with AppPage, AppPageView {
       body: ListView(
         children: [
           SizedBox(height: 36),
-          Group(
+          GroupSection(
             children: [
               GroupTile(
                 onTap: () => handleDeleteAccount(context),

@@ -38,7 +38,7 @@ class App {
       ..addLazy((e) async => Storage())
       ..addLazy((e) async => Router(session: await e.resolve()))
       ..addLazy((e) async => RouterParser(parser: routes))
-      ..addLazy((e) async => Server('chat.swipelab.com'));
+      ..addLazy((e) async => ChatApi('chat.swipelab.com'));
   }
 
   late final Store store;
@@ -55,7 +55,7 @@ class App {
 
   RouterParser get routeParser => store.get();
 
-  Server get server => store.get();
+  ChatApi get server => store.get();
 
   Future<void> flush() async {
     await storage.config.set(_config);

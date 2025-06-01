@@ -2,6 +2,7 @@ import 'package:app/app.dart';
 import 'package:app/blocs/router.dart';
 import 'package:app/pages/settings/settings_page.dart';
 import 'package:app/services/server.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:stated/stated.dart';
 
@@ -27,12 +28,15 @@ class HomePage with AppPage, AppPageView, Emitter {
           actions: [
             IconButton(
               onPressed: SettingsPage().push,
-              icon: Icon(Icons.person),
+              icon: Icon(CupertinoIcons.settings),
             ),
           ],
         ),
         body: ListView.builder(
           itemBuilder: (context, index) => ListTile(
+            leading: CircleAvatar(
+              child: Icon(CupertinoIcons.chat_bubble_2),
+            ),
             title: Text(rooms[index].alias),
             onTap: rooms[index].link.push,
           ),

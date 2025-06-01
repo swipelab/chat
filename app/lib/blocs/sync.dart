@@ -25,7 +25,7 @@ class Sync with Dispose, AsyncInit {
 
   final Bus bus;
   final SessionBloc session;
-  final Server server;
+  final ChatApi server;
   final App app;
 
   Future<void> updateFcmToken() async {
